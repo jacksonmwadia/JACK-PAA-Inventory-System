@@ -82,6 +82,7 @@ def product_detail(request, pk):
 
 # @login_required(login_url='user-login')
 # @allowed_users(allowed_roles=['Admin'])
+
 def customers(request):
     customer = User.objects.filter(groups=2)
     customer_count = customer.count()
@@ -183,16 +184,15 @@ def pay(request):
 
 
 def stk(request):
-    if request.method =="POST":
+    if request.method == "POST":
         phone = request.POST['phone']
         amount = request.POST['amount']
         access_token = MpesaAccessToken.validated_mpesa_access_token
         api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
         headers = {"Authorization": "Bearer %s" % access_token}
-        request = {
+        stk_request = {
             "BusinessShortCode": LipanaMpesaPpassword.Business_short_code,
-            "Password"
-            "": LipanaMpesaPpassword.decode_password,
+            "Password": LipanaMpesaPpassword.decode_password,
             "Timestamp": LipanaMpesaPpassword.lipa_time,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": amount,
@@ -200,9 +200,19 @@ def stk(request):
             "PartyB": LipanaMpesaPpassword.Business_short_code,
             "PhoneNumber": phone,
             "CallBackURL": "https://sandbox.safaricom.co.ke/mpesa/",
-            "AccountReference": "eMobilis",
-            "TransactionDesc": "Web Development Charges"
+            "AccountReference": "JACK-PAA Inventory",
+            "TransactionDesc": "Inventory Payment"
         }
-        response = requests.post(api_url, json=request, headers=headers)
-        return HttpResponse("Success")
+        response = requests.post(api_url, json=stk_request, headers=headers)
 
+        # Parse the response
+        response_data = response.json()
+        if response.status_code == 200:
+            message = "STK push initiated successfully. Check your phone to complete the transaction."
+        else:
+            message = response_data.get("errorMessage", "Something went wrong, please try again.")
+
+        # Render the template with the message
+        return render(request, "stk_response.html", {"message": message})
+    else:
+        return HttpResponse("Invalid request method.")
